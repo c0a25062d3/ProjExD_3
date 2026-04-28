@@ -140,6 +140,19 @@ class Bomb:
         self.rct.move_ip(self.vx, self.vy)
         screen.blit(self.img, self.rct)
 
+class Score:
+    def __init__(self):
+        self.fonto = pg.font.SysFont(None, 50)
+        self.color = (0, 0, 255)
+        self.score = 0
+        self.image = self.fonto.render(f"Score: {self.score}", True, self.color)
+        self.rct = self.image.get_rect()
+        self.rct.center = (100, HEIGHT - 50)
+
+    def update(self, screen: pg.Surface):
+        self.image = self.fonto.render(f"Score: {self.score}", True, self.color)
+        screen.blit(self.image, self.rct)
+
 
 def main():
     pg.display.set_caption("たたかえ！こうかとん")
@@ -151,6 +164,7 @@ def main():
     # for _ in range(NUM_OF_BOMBS):
     #     bomb = Bomb((255, 0, 0), 10)
     #     bombs.append(bomb)
+    score = Score()
 
 
     beam = None  # ゲーム初期化時にはビームは存在しない
@@ -161,13 +175,15 @@ def main():
             if event.type == pg.QUIT:
                 return
             if event.type == pg.KEYDOWN and event.key == pg.K_SPACE:
-                # スペースキー押下でBeamクラスのインスタンス生成
                 beam = Beam(bird)            
+
+        # 1. 描画の準備（まず背景を塗る）
         screen.blit(bg_img, [0, 0])
         
-        for bomb in bombs:
+        # 2. 衝突判定（スコア計算）
+        for i, bomb in enumerate(bombs):
+            # こうかとんと爆弾の衝突
             if bird.rct.colliderect(bomb.rct):
-                # ゲームオーバー時に，こうかとん画像を切り替え，1秒間表示させる
                 fonto = pg.font.Font(None, 80)
                 txt = fonto.render("Game Over", True, (255, 0, 0))
                 screen.blit(txt, (WIDTH//2-150, HEIGHT//2))
@@ -176,25 +192,33 @@ def main():
                 time.sleep(1)
                 return
 
-        for i, bomb in enumerate(bombs):
+            # ビームと爆弾の衝突
             if beam is not None:
-                if beam.rct.colliderect(bomb.rct):  # 練習2：爆弾とビームの衝突判定
+                if beam.rct.colliderect(bomb.rct):
                     beam = None
-                    bombs.pop(i)
-                    bird.change_img(6, screen)  # 練習3：こうかとん喜びエフェクト
-                    pg.display.update()
-                    # time.sleep(1)
+                    bombs.pop(i)  # 爆弾を消す
+                    score.score += 1  # ここでスコアを増やす！
+                    bird.change_img(6, screen) # 喜びエフェクト（任意）
+                    break # リスト操作中のループ抜け
 
-        boms = [bomb for bomb in bombs if bomb is not None]  # 練習4：爆弾とこうかとんの衝突判定
-
-
+        # 3. 各オブジェクトの移動と描画
         key_lst = pg.key.get_pressed()
         bird.update(key_lst, screen)
+        
         if beam is not None:
             beam.update(screen)
+            # 画面外に出たビームを消去（カクつき防止）
+            if check_bound(beam.rct) != (True, True):
+                beam = None
+
         for bomb in bombs:
             bomb.update(screen)
+        
+        score.update(screen) # スコアの表示
+
+        # 4. 最後に1回だけ画面を更新！
         pg.display.update()
+        
         tmr += 1
         clock.tick(50)
 
